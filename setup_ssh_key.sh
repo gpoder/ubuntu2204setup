@@ -1,52 +1,55 @@
 #!/usr/bin/env bash
 set -e
 
-SSH_USER="${1:-$USER}"
-KEY_PATH="/home/$SSH_USER/.ssh/id_rsa"
-AUTHORIZED="/home/$SSH_USER/.ssh/authorized_keys"
+echo "---------------------------------------------"
+echo " Ubuntu 24.04 SSH Setup Script"
+echo " Ensuring SSH is installed, configured, and a"
+echo " new SSH keypair is created for the user:"
+echo "   $USER"
+echo "---------------------------------------------"
 
-echo "=============================="
-echo " Installing OpenSSH server"
-echo "=============================="
-apt update -y
-apt install -y openssh-server
+# Install OpenSSH server
+echo "📦 Installing SSH server..."
+sudo apt update -y
+sudo apt install -y openssh-server
 
-echo "=============================="
-echo " Ensuring .ssh directory exists"
-echo "=============================="
-mkdir -p "/home/$SSH_USER/.ssh"
-chmod 700 "/home/$SSH_USER/.ssh"
-chown $SSH_USER:$SSH_USER "/home/$SSH_USER/.ssh"
+# Enable + start SSH service
+echo "🔧 Enabling SSH service..."
+sudo systemctl enable ssh
+sudo systemctl start ssh
 
-echo "=============================="
-echo " Generating SSH key (if missing)"
-echo "=============================="
-if [ ! -f "$KEY_PATH" ]; then
-    sudo -u "$SSH_USER" ssh-keygen -t rsa -b 4096 -N "" -f "$KEY_PATH"
+# Ensure ~/.ssh exists
+echo "📁 Creating ~/.ssh directory if needed..."
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+
+# Generate SSH key (if not already present)
+KEY_PATH="$HOME/.ssh/id_rsa"
+
+if [[ -f "$KEY_PATH" ]]; then
+    echo "🔑 SSH key already exists at $KEY_PATH"
+else
+    echo "🔑 Generating a new SSH key..."
+    ssh-keygen -t rsa -b 4096 -f "$KEY_PATH" -N ""
 fi
 
-echo "=============================="
-echo " Installing public key"
-echo "=============================="
-cat "$KEY_PATH.pub" >> "$AUTHORIZED"
-chmod 600 "$AUTHORIZED"
-chown $SSH_USER:$SSH_USER "$AUTHORIZED"
+# Add public key to authorized_keys
+echo "📥 Adding SSH public key to authorized_keys..."
+cat "$KEY_PATH.pub" >> ~/.ssh/authorized_keys
 
-echo "=============================="
-echo " Enabling SSH service"
-echo "=============================="
-systemctl enable ssh
-systemctl restart ssh
+# Fix permissions
+chmod 600 ~/.ssh/authorized_keys
 
-echo "=============================="
-echo " OPTIONAL: Disable password auth"
-echo "=============================="
-sed -i 's/^#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config || true
-sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config || true
-systemctl restart ssh
+# Restart SSH for safety
+echo "🔄 Restarting SSH service..."
+sudo systemctl restart ssh
 
-echo "=============================="
-echo " DONE!"
-echo " Public key is installed for user: $SSH_USER"
-echo " Private key: $KEY_PATH"
-echo "=============================="
+echo "---------------------------------------------"
+echo "✅ SSH setup complete!"
+echo "You can now SSH into this machine using:"
+echo "  ssh $USER@<IP_ADDRESS>"
+echo
+echo "Your public key is:"
+echo "---------------------------------------------"
+cat "$KEY_PATH.pub"
+echo "---------------------------------------------"
