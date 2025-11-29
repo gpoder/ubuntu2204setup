@@ -11,7 +11,7 @@ echo "=============================="
 echo " Installing SMB client"
 echo "=============================="
 apt update -y
-apt install -y cifs-utils
+apt install -y samba samba-common cifs-utils
 
 echo "=============================="
 echo " Creating mount directory"
